@@ -1,0 +1,33 @@
+{
+  "name": "full_stack_example",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "frontend": "parcel index.html --port 3000 --open",
+    "backend": "source .venv/bin/activate && python server/server.py --host 0.0.0.0 --port 8000 --reload",
+    "start": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "test:front": "vitest --config tests/vitest.config.js --run",
+    "test:back": "python -m pytest -q",
+    "test": "npm run test:back && npm run test:front",
+    "stop": "./stop.sh",
+    "dev": "npm run start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "parcel": "^2.16.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.0.0",
+    "vitest": "^2.1.3"
+  }
+}
