@@ -1,9 +1,9 @@
 # Examples
 Coding examples for recruiters and hiring managers to review 
 
-SmileViewer is a simpler full stack example 
+SmileViewer is a simpler full-stack example: 
 
-  it stitches some simple Databasing, ML models, and websocket networking into a lowish latentcy front end 
+    it stitches some Databasing, ML models, and websocket networking into a lowish latentcy front end 
   
     some improvements are possible but dependent on the usecase:
     
