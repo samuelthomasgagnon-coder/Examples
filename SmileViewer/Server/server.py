@@ -133,11 +133,33 @@ class SmileAnalysisServer:
                 pass
         s['persistent_faces'].clear()
 
+    async def Send_Data_update(self):
+        now = time.time()
+        s = self.state
+        c = self.controls
+        if len(self.MultiSocketManager.ControlsManager.active) > 0:
+            compact = []
+            for  face_id, f in s['persistent_faces'].items():
+                x1, y1, x2, y2 = f['face_bbox']
+                if f.get('smile_bbox'):
+                    sx1, sy1, sx2, sy2 = f['smile_bbox']
+                else:
+                    sx1, sy1, sx2, sy2 = (-1, -1, -1, -1)
+                row = [face_id, x1, y1, x2, y2, sx1, sy1, sx2, sy2, f['smile_status'] ]
+                if c['DRAW_LANDMARKS']:
+                    w, h = s['w'], s['h']
+                    all_landparks = f['landmarks']
+                    subset = self.SmileIDer.LandmarksSubSets['face_mesh_subset']
+                    landmarks = [[int(all_landparks[i].x * w), int(all_landparks[i].y * h)] for i in subset]
+                    row.append(landmarks)
+                compact.append(row)
+            faces_msg = {"t": "f", "ts": now, "f": compact}
+            await self.MultiSocketManager.ControlsManager.send_json(faces_msg)
+
+
     async def loop(self):
         s = self.state
         c = self.controls
-        last_transmission = 0.0
-        
         try:
             while not s['shutdown_event'].is_set():
                 # Decide frame source: webcam or test images
@@ -147,7 +169,7 @@ class SmileAnalysisServer:
                         await asyncio.sleep(0.03)
                         continue
                 else:
-                    # Initialize test images lazily
+                    # Initialize test images is needed
                     if s['test_images'] is None:
                         faces_dir = os.path.join(os.getcwd(), "Samples", "Faces")
                         image_paths = sorted(
@@ -160,7 +182,7 @@ class SmileAnalysisServer:
                         s['test_last_switch_ts'] = 0.0
                     # If no images available, fallback to webcam
                     if not s['test_images']:
-                        ret, frame = s['webcam'].read()
+                        ret, frame = await asyncio.to_thread(s['webcam'].read)
                         if not ret:
                             await asyncio.sleep(0.03)
                             continue
@@ -175,11 +197,9 @@ class SmileAnalysisServer:
                             # Skip bad image and try next
                             s['test_images'].pop(s['test_image_index'])
                             if not s['test_images']:
-                                await asyncio.sleep(0.03)
                                 continue
                             s['test_image_index'] %= len(s['test_images'])
                             continue
-
                 # front faceing so flip -> more like a mirror
                 frame = cv2.flip(frame, 1)
                 s['latest_frame'] = frame.copy() # Store a copy for async workers
@@ -197,27 +217,8 @@ class SmileAnalysisServer:
                 self.SmileIDer.process_faces(frame)
                 # Broadcast annotated video frame to WebRTC clients
                 await self.MultiSocketManager.broadcast_video_frame(frame)
+                await self.Send_Data_update()
                 
-                now = time.time()
-                if len(self.MultiSocketManager.ControlsManager.active) > 0 and (now - last_transmission) >= 0.03:
-                    compact = []
-                    for  face_id, f in s['persistent_faces'].items():
-                        x1, y1, x2, y2 = f['face_bbox']
-                        if f.get('smile_bbox'):
-                            sx1, sy1, sx2, sy2 = f['smile_bbox']
-                        else:
-                            sx1, sy1, sx2, sy2 = (-1, -1, -1, -1)
-                        row = [face_id, x1, y1, x2, y2, sx1, sy1, sx2, sy2, f['smile_status'] ]
-                        if c['DRAW_LANDMARKS']:
-                            w, h = s['w'], s['h']
-                            all_landparks = f['landmarks']
-                            subset = self.SmileIDer.LandmarksSubSets['face_mesh_subset']
-                            landmarks = [[int(all_landparks[i].x * w), int(all_landparks[i].y * h)] for i in subset]
-                            row.append(landmarks)
-                        compact.append(row)
-                    faces_msg = {"t": "f", "ts": now, "f": compact}
-                    await self.MultiSocketManager.ControlsManager.send_json(faces_msg)
-                    last_transmission = now
 
         except asyncio.CancelledError:
             print("Main loop cancelled, shutting down...")
