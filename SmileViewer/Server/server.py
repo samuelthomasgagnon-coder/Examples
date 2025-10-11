@@ -142,7 +142,7 @@ class SmileAnalysisServer:
             while not s['shutdown_event'].is_set():
                 # Decide frame source: webcam or test images
                 if not c.get('TEST_MODE', False):
-                    ret, frame = s['webcam'].read()
+                    ret, frame =  await asyncio.to_thread(s['webcam'].read)
                     if not ret:
                         await asyncio.sleep(0.03)
                         continue
@@ -218,7 +218,7 @@ class SmileAnalysisServer:
                     faces_msg = {"t": "f", "ts": now, "f": compact}
                     await self.MultiSocketManager.ControlsManager.send_json(faces_msg)
                     last_transmission = now
-                await asyncio.sleep(.5/s['max_fps']) # Yield control to other tasks
+
         except asyncio.CancelledError:
             print("Main loop cancelled, shutting down...")
             raise
