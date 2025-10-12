@@ -246,6 +246,7 @@ class SmileAnalysisServer:
                 # Broadcast annotated video frame to WebRTC clients
                 await self.MultiSocketManager.broadcast_video_frame(frame)
                 await self.Send_Data_update()
+                
                 #ut = time.time() 
                 #fps = 1.0 / (ut - ct) if (ut - ct) > 0 else 0
                 #print(f"{fps:.1f} FPS")

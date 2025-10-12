@@ -1,9 +1,9 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import useDataSocket from "./hooks/useDataSocket";
 import useVideoSocket from "./hooks/useVideoSocket";
 import ControlsPanel from "./components/ControlsPanel";
 
-export default function SmileViewer({ wsUrl }) {
+export default function SmileViewer({ wsUrl, onRecordChange }) {
   const videoCanvasRef = useRef(null);
 
   const resolvedWsUrl = useMemo(() => {
@@ -26,6 +26,13 @@ export default function SmileViewer({ wsUrl }) {
   } = useDataSocket(resolvedWsUrl);
 
   const { videoWs, videoConnected } = useVideoSocket(resolvedWsUrl, videoCanvasRef);
+
+  // Sync recording state with App component
+  useEffect(() => {
+    if (onRecordChange) {
+      onRecordChange(settings.RECORD);
+    }
+  }, [settings.RECORD, onRecordChange]);
 
   // eslint-disable-next-line no-unused-vars
   const _facesTick = facesTick; // keep tick referenced to ensure panel updates when faces change

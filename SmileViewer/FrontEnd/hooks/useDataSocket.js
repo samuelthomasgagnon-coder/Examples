@@ -100,6 +100,9 @@ export default function useDataSocket(resolvedWsUrl) {
                   TEST_MODE: !!payload.settings.TEST_MODE,
                 });
               }
+            } else if (payload.type === "pong") {
+              // Server responded to our ping - connection is healthy
+              // Could add connection health tracking here if needed
             }
           } catch (e) {
             // ignore parse errors

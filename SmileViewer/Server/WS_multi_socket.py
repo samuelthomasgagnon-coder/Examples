@@ -15,6 +15,7 @@ class MultiSocketManager:
     def __init__(self, parent):
         self.ControlsManager = ControlsManager()
         self.parent = parent
+        self.video_ping_times: dict[WebSocket, float] = {}
 
     def cleanup_resources(self):
         """Clean up all resources before exit"""
@@ -59,6 +60,9 @@ class MultiSocketManager:
             allow_methods=['*'],
             allow_headers=['*'],
         )
+        
+        # Start cleanup task
+        asyncio.create_task(self._cleanup_task())
 
         @app.websocket("/controls")
         async def controls_endpoint(websocket: WebSocket):
@@ -123,6 +127,7 @@ class MultiSocketManager:
                                 await websocket.send_json({"type": "current_settings", "settings": settings})
                             elif payload.get("type") == "ping":
                                 #print("Received ping from data WebSocket - sending pong")
+                                self.ControlsManager.update_ping_time(websocket)
                                 await websocket.send_json({"type": "pong"})
                         except Exception as e:
                             print(f"Error processing data WebSocket message: {e}")
@@ -159,6 +164,7 @@ class MultiSocketManager:
                             #print(f"Video WS parsed payload: {payload}")
                             if payload.get("type") == "ping":
                                 #print("Received ping from video WebSocket - sending pong")
+                                self.video_ping_times[websocket] = time.time()
                                 await websocket.send_json({"type": "pong"})
                             # do not handle settings on video websocket
                         except Exception as e:
@@ -174,6 +180,7 @@ class MultiSocketManager:
                 print(f"Error in video stream: {e}")
             finally:
                 s['Video_Connections'].pop(client_id, None)
+                self.video_ping_times.pop(websocket, None)
 
         @app.get("/")
         async def root():
@@ -248,3 +255,40 @@ class MultiSocketManager:
                 disconnected_clients.append(client_id)
         for client_id in disconnected_clients:
             s['Video_Connections'].pop(client_id, None)
+
+    async def _cleanup_task(self):
+        """Background task to cleanup stale connections every 10 seconds"""
+        while True:
+            try:
+                await asyncio.sleep(21.0)  # Run every 21 seconds
+                # Cleanup both data and video connections
+                await self.ControlsManager.cleanup_stale_connections()
+                await self._cleanup_stale_video_connections()
+            except asyncio.CancelledError:
+                print("Cleanup task cancelled")
+                break
+            except Exception as e:
+                print(f"Error in cleanup task: {e}")
+                await asyncio.sleep(5.0)  # Wait before retrying on error
+
+    async def _cleanup_stale_video_connections(self, timeout_seconds: float = 30.0):
+        """Remove stale video connections"""
+        current_time = time.time()
+        stale_connections = []
+        for websocket, last_ping in self.video_ping_times.items():
+            if current_time - last_ping > timeout_seconds:
+                stale_connections.append(websocket)
+        
+        for websocket in stale_connections:
+            print(f"Removing stale video connection: {websocket}")
+            # Find and remove from Video_Connections dict
+            s = self.parent.state
+            for client_id, ws in list(s['Video_Connections'].items()):
+                if ws == websocket:
+                    s['Video_Connections'].pop(client_id, None)
+                    break
+            self.video_ping_times.pop(websocket, None)
+            try:
+                await websocket.close(code=1000, reason="No ping received")
+            except Exception:
+                pass
