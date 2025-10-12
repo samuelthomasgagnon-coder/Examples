@@ -1,4 +1,6 @@
-The bulk of this code should be somewhat self explainatory. 
+The bulk of this code should be somewhat self explainatory.
+Reevant presentation found here: 
+    https://docs.google.com/presentation/d/1akX9VMA5ttlcQ7gQ8n_TQFYdem2aCtBV-j44Jr8D2oI/edit?usp=sharing
 
 Running setup.sh should create the needed virtual environment 
     npm test should almost verify everything is working OR
