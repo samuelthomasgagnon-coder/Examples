@@ -32,7 +32,7 @@ export default function SmileViewer({ wsUrl }) {
 
   return (
     <div style={{display:"flex", gap:20}}>
-      <div style={{position:"relative", width: "640px", height: "480px"}}>
+      <div style={{position:"relative", width: "1080px", height: "720px"}}>
         <canvas
           ref={videoCanvasRef}
           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", border: "1px solid #ccc" }}

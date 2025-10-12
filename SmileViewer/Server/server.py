@@ -63,6 +63,8 @@ class SmileAnalysisServer:
             "test_images": None,
             "test_image_index": 0,
             "test_last_switch_ts": 0.0,
+            "test_duration": 1.5,  # 1.5 seconds
+            "test_fps": 30,  # 30 Hz
 
             # Camera Configuration
             "webcam": webcam,
@@ -132,6 +134,57 @@ class SmileAnalysisServer:
                 pass
         s['persistent_faces'].clear()
 
+    def init_test_images(self):
+        """Initialize and return test images from Samples/Faces directory."""
+        s = self.state
+        if s['test_images'] is None:
+            faces_dir = os.path.join(os.getcwd(), "Samples", "Faces")
+            image_paths = sorted(
+                glob.glob(os.path.join(faces_dir, "*.jpg")) +
+                glob.glob(os.path.join(faces_dir, "*.jpeg")) +
+                glob.glob(os.path.join(faces_dir, "*.png"))
+            )
+            s['test_images'] = image_paths if image_paths else []
+            s['test_image_index'] = 0
+            s['test_last_switch_ts'] = 0.0
+            s['test_fps'] = 30
+            print(f"Test mode initialized with {len(s['test_images'])} images")
+
+
+    async def get_next_test_frame(self):
+        """Get the next test frame with proper 30Hz timing."""
+        s = self.state
+        c = self.controls
+        if s['test_images'] is None:
+            self.init_test_images()
+        
+        # Initialize test images if needed
+        test_images = s['test_images']
+        
+        # If no images available, return None to fallback to webcam
+        if not test_images:
+            return None
+        
+        # Check if test duration has elapsed
+        current_time = time.time()
+        elapsed_time = current_time - s['test_last_switch_ts']
+        if elapsed_time > s['test_duration']: 
+            s["test_image_index"] = s['test_image_index'] + 1 
+            if s["test_image_index"] >= len(s["test_images"]): 
+                s['test_image_index'] = 0
+            s['test_last_switch_ts'] = current_time
+        
+        # Calculate target frame time for test_fps
+        target_frame_interval = 1.0 / s['test_fps']  # 0.0333 seconds
+        
+        img_path = test_images[s['test_image_index']]
+        frame = cv2.imread(img_path)
+        
+        if target_frame_interval > 0:
+            await asyncio.sleep(target_frame_interval)
+    
+        return frame
+
     async def Send_Data_update(self):
         now = time.time()
         s = self.state
@@ -163,40 +216,17 @@ class SmileAnalysisServer:
             while not s['shutdown_event'].is_set():
                 # Decide frame source: webcam or test images
                 if not c.get('TEST_MODE', False):
-                    ret, frame =  await asyncio.to_thread(s['webcam'].read)
+                    ret, frame = await asyncio.to_thread(s['webcam'].read)
                     if not ret:
                         await asyncio.sleep(0.03)
                         continue
                 else:
-                    # Initialize test images is needed
-                    if s['test_images'] is None:
-                        faces_dir = os.path.join(os.getcwd(), "Samples", "Faces")
-                        image_paths = sorted(
-                            glob.glob(os.path.join(faces_dir, "*.jpg")) +
-                            glob.glob(os.path.join(faces_dir, "*.jpeg")) +
-                            glob.glob(os.path.join(faces_dir, "*.png"))
-                        )
-                        s['test_images'] = image_paths if image_paths else []
-                        s['test_image_index'] = 0
-                        s['test_last_switch_ts'] = 0.0
-                        print(image_paths)
-                    # If no images available, fallback to webcam
-                    if not s['test_images']:
+                    # Try to get test frame, fallback to webcam if needed
+                    frame = await self.get_next_test_frame()
+                    if frame is None:
                         ret, frame = await asyncio.to_thread(s['webcam'].read)
                         if not ret:
                             await asyncio.sleep(0.03)
-                            continue
-                    else:
-                        await asyncio.sleep(1.25)
-                        s['test_image_index'] = (s['test_image_index'] + 1) % len(s['test_images'])
-                        img_path = s['test_images'][s['test_image_index']]
-                        frame = cv2.imread(img_path)
-                        if frame is None:
-                            # Skip bad image and try next
-                            s['test_images'].pop(s['test_image_index'])
-                            if not s['test_images']:
-                                continue
-                            s['test_image_index'] %= len(s['test_images'])
                             continue
                 # front faceing so flip -> more like a mirror
                 frame = cv2.flip(frame, 1)
