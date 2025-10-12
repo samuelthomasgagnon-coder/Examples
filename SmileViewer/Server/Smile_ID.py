@@ -403,11 +403,9 @@ class SmileIDer:
         '''
         s = self.state
         c = self.controls
- 
         face_dir = os.path.join(self.images_dir, str(face_id))
         os.makedirs(face_dir, exist_ok=True)
         saved_initial_face = False
-        
         try:
             #save initial face
             while not saved_initial_face and not self.state['shutdown_event'].is_set():

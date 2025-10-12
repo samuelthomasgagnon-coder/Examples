@@ -49,23 +49,8 @@ export default function SmileViewer({ wsUrl }) {
             videoConnected: videoConnected,
             facesCount: facesRef.current.length,
           }}
+          facesRef={facesRef}
         />
-        <hr/>
-        <div>
-          <h4>Faces</h4>
-          {facesRef.current.length === 0 ? (
-            <div>No faces</div>
-          ) : (
-            facesRef.current.map(f => (
-              <div key={f.face_id} style={{marginBottom:8}}>
-                <strong>Face {f.face_id}</strong><br/>
-                Face bbox: {f.face_bbox ? f.face_bbox.join(",") : "-1,-1,-1,-1"}<br/>
-                Smile bbox: {f.smile_status == 'Smiling' ? f.smile_bbox.join(",") : "-1,-1,-1,-1"}<br/>
-                Status: {f.smile_status}
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function ControlsPanel({ settings, setSettings, sendStateToServer, connections }) {
+export default function ControlsPanel({ settings, setSettings, sendStateToServer, connections, facesRef }) {
   const { DRAW_LANDMARKS, DRAW_FACE_BB, DRAW_SMILE_BB, DRAW_ROTATED_BB, RECORD, TEST_MODE } = settings;
   const { dataConnected, videoConnected, facesCount } = connections;
 
@@ -139,6 +139,22 @@ export default function ControlsPanel({ settings, setSettings, sendStateToServer
         <div>Data Connection: {dataConnected ? "Connected" : "Disconnected"}</div>
         <div>Video Stream: {videoConnected ? "Connected" : "Disconnected"}</div>
         <div>Faces: {facesCount}</div>
+      </div>
+      <hr/>
+      <div>
+        <h4>Faces</h4>
+        {facesRef.current.length === 0 ? (
+          <div>No faces</div>
+        ) : (
+          facesRef.current.map(f => (
+            <div key={f.face_id} style={{marginBottom:8}}>
+              <strong>Face {f.face_id}</strong><br/>
+              Face bbox: {f.face_bbox ? f.face_bbox.join(",") : "-1,-1,-1,-1"}<br/>
+              Smile bbox: {f.smile_status == 'Smiling' ? f.smile_bbox.join(",") : "-1,-1,-1,-1"}<br/>
+              Status: {f.smile_status}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

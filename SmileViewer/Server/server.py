@@ -30,7 +30,6 @@ class SmileAnalysisServer:
         self.MultiSocketManager = MultiSocketManager(self)
         self.MultiSocketManager.register(self.app, self)
 
-
     def signal_handler(self, signum, frame):
         """Handle shutdown signals gracefully"""
         self.state['shutdown_event'].set()
@@ -156,10 +155,10 @@ class SmileAnalysisServer:
             faces_msg = {"t": "f", "ts": now, "f": compact}
             await self.MultiSocketManager.ControlsManager.send_json(faces_msg)
 
-
     async def loop(self):
         s = self.state
         c = self.controls
+        #ct = time.time()
         try:
             while not s['shutdown_event'].is_set():
                 # Decide frame source: webcam or test images
@@ -180,6 +179,7 @@ class SmileAnalysisServer:
                         s['test_images'] = image_paths if image_paths else []
                         s['test_image_index'] = 0
                         s['test_last_switch_ts'] = 0.0
+                        print(image_paths)
                     # If no images available, fallback to webcam
                     if not s['test_images']:
                         ret, frame = await asyncio.to_thread(s['webcam'].read)
@@ -187,10 +187,8 @@ class SmileAnalysisServer:
                             await asyncio.sleep(0.03)
                             continue
                     else:
-                        now_ts = time.time()
-                        if now_ts - s['test_last_switch_ts'] >= 1.5:
-                            s['test_image_index'] = (s['test_image_index'] + 1) % len(s['test_images'])
-                            s['test_last_switch_ts'] = now_ts
+                        await asyncio.sleep(1.25)
+                        s['test_image_index'] = (s['test_image_index'] + 1) % len(s['test_images'])
                         img_path = s['test_images'][s['test_image_index']]
                         frame = cv2.imread(img_path)
                         if frame is None:
@@ -218,7 +216,10 @@ class SmileAnalysisServer:
                 # Broadcast annotated video frame to WebRTC clients
                 await self.MultiSocketManager.broadcast_video_frame(frame)
                 await self.Send_Data_update()
-                
+                #ut = time.time() 
+                #fps = 1.0 / (ut - ct) if (ut - ct) > 0 else 0
+                #print(f"{fps:.1f} FPS")
+                #ct = ut
 
         except asyncio.CancelledError:
             print("Main loop cancelled, shutting down...")
