@@ -150,7 +150,6 @@ class SmileAnalysisServer:
             s['test_fps'] = 30
             print(f"Test mode initialized with {len(s['test_images'])} images")
 
-
     async def get_next_test_frame(self):
         """Get the next test frame with proper 30Hz timing."""
         s = self.state
@@ -218,7 +217,6 @@ class SmileAnalysisServer:
                 if not c.get('TEST_MODE', False):
                     ret, frame = await asyncio.to_thread(s['webcam'].read)
                     if not ret:
-                        await asyncio.sleep(0.03)
                         continue
                 else:
                     # Try to get test frame, fallback to webcam if needed
@@ -226,7 +224,6 @@ class SmileAnalysisServer:
                     if frame is None:
                         ret, frame = await asyncio.to_thread(s['webcam'].read)
                         if not ret:
-                            await asyncio.sleep(0.03)
                             continue
                 # front faceing so flip -> more like a mirror
                 frame = cv2.flip(frame, 1)
